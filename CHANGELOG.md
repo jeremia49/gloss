@@ -4,6 +4,11 @@
 
 ---
 
+## Unreleased
+
+- Added Bahasa Indonesia to the Answer language and Translation target options in Settings.
+
+
 ## v1.0.2 — 2026-07-30
 
 这一版让论文分析任务更透明、更可控，并进一步完善了插件市场、独立设置与本地发布体验。

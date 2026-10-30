@@ -8,6 +8,7 @@ import { FeatureSettingsEditor } from "./FeatureSettingsEditor";
 const LANGS = [
   "中文 (Simplified Chinese)",
   "English",
+  "Bahasa Indonesia",
   "日本語",
   "한국어",
   "Français",
