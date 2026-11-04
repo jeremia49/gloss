@@ -592,6 +592,36 @@ export const api = {
       body: JSON.stringify({ provider }),
     }).then((r) => j<ProviderTestResult>(r)),
 
+  // read-aloud (text to speech) — audio bytes come back, the browser plays them
+  speakText: (text: string) =>
+    fetch("/api/tts/speak", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    }).then(async (r) => {
+      if (!r.ok) throw new Error((await r.text()).slice(0, 300) || `HTTP ${r.status}`);
+      return r.blob();
+    }),
+  speakPage: (paperId: string, page: number) =>
+    fetch("/api/tts/speak", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paper_id: paperId, page }),
+    }).then(async (r) => {
+      if (!r.ok) throw new Error((await r.text()).slice(0, 300) || `HTTP ${r.status}`);
+      return r.blob();
+    }),
+  getTtsConfig: () =>
+    fetch("/api/tts/config").then((r) =>
+      j<{ configured: boolean; model: string; voice: string; response_format: string; speed: number; language: string }>(r),
+    ),
+  testTts: (body: { base_url?: string; api_key?: string; model?: string }) =>
+    fetch("/api/tts/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => j<{ ok: boolean; error?: string; bytes?: number }>(r)),
+
   getSettings: () =>
     fetch("/api/settings").then((r) => j<{
       config: any;

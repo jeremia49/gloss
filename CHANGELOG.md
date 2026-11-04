@@ -6,6 +6,9 @@
 
 ## Unreleased
 
+
+- 新增论文 **朗读（Read aloud）**：PDF 工具栏 🔊 从当前可见页开始朗读并自动翻页，选中任意文字可单独朗读；设置页新增文字转语音（任意 OpenAI 兼容 `/v1/audio/speech` 端点，如 edge-tts 音色），合成音频本地缓存。
+- Added **Read aloud** (text-to-speech): the 🔊 toolbar button reads from the visible page and auto-advances, and any selection can be spoken; Settings gains a TTS section for any OpenAI-compatible `/v1/audio/speech` endpoint (e.g. edge-tts voices), with synthesized audio cached locally.
 - Added Bahasa Indonesia to the Answer language and Translation target options in Settings.
 
 

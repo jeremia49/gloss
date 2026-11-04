@@ -147,6 +147,22 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "timeout": 300,
         },
     },
+    # Text-to-speech (read papers aloud) via an OpenAI-compatible
+    # /v1/audio/speech endpoint, e.g. https://9router.jeremia.my.id/v1
+    "tts": {
+        # any OpenAI-compatible gateway that serves /audio/speech
+        "base_url": "",
+        "api_key": "",
+        # e.g. "edge-tts/en-AU-WilliamMultilingualNeural", "tts-1", "tts-1-hd"
+        "model": "edge-tts/en-AU-WilliamMultilingualNeural",
+        # OpenAI-style voice name; may be ignored by edge-tts style models
+        "voice": "",
+        # audio container the endpoint returns: "mp3" | "opus" | "aac" | "flac"
+        "response_format": "mp3",
+        # 0.25–4.0 (most edge-tts gateways ignore this)
+        "speed": 1.0,
+        "timeout": 120,
+    },
 }
 
 _lock = threading.Lock()
@@ -247,4 +263,8 @@ def public_config() -> dict[str, Any]:
             p["api_key"] = "set"
         else:
             p["api_key"] = ""
+    # the TTS gateway key is a secret too — mask it the same way
+    tts = out.get("tts")
+    if isinstance(tts, dict):
+        tts["api_key"] = "set" if tts.get("api_key") else ""
     return out

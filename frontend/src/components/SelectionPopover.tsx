@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store";
+import { useReadAloud } from "../readAloud";
 
 const COLORS = ["#ffd54f", "#a5d6a7", "#90caf9", "#ef9a9a", "#ce93d8"];
 
@@ -20,8 +21,8 @@ export function SelectionPopover({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const T = {
-    en: { explain: "💡 Explain", translate: "🌐 Translate", ask: "💬 Add to chat", highlight: "Highlight", copy: "⧉ Copy", note: "📝 Add note", save: "Save note", saving: "Saving…", saveError: "Could not save the highlight.", placeholder: "Optional note…" },
-    zh: { explain: "💡 解释", translate: "🌐 翻译", ask: "💬 加入会话", highlight: "高亮", copy: "⧉ 复制", note: "📝 添加笔记", save: "保存笔记", saving: "保存中…", saveError: "高亮保存失败，请重试。", placeholder: "补充你的笔记…" },
+    en: { explain: "💡 Explain", translate: "🌐 Translate", ask: "💬 Add to chat", speak: "🔊 Read aloud", highlight: "Highlight", copy: "⧉ Copy", note: "📝 Add note", save: "Save note", saving: "Saving…", saveError: "Could not save the highlight.", placeholder: "Optional note…" },
+    zh: { explain: "💡 解释", translate: "🌐 翻译", ask: "💬 加入会话", speak: "🔊 朗读", highlight: "高亮", copy: "⧉ 复制", note: "📝 添加笔记", save: "保存笔记", saving: "保存中…", saveError: "高亮保存失败，请重试。", placeholder: "补充你的笔记…" },
   }[uiLang];
 
   async function saveHighlight(nextColor: string, nextNote = "") {
@@ -49,6 +50,17 @@ export function SelectionPopover({
         <button onClick={() => { run("explain"); onClose(); }}>{T.explain}</button>
         <button onClick={() => { run("translate"); onClose(); }}>{T.translate}</button>
         <button onClick={() => { run("ask"); onClose(); }}>{T.ask}</button>
+        <button
+          onClick={() => {
+            const paper = useStore.getState().current;
+            if (selection && paper) {
+              useReadAloud.getState().speakSelection(paper.id, selection.page, selection.text);
+            }
+            onClose();
+          }}
+        >
+          {T.speak}
+        </button>
         <span className="hl-colors">
           {COLORS.map((c) => (
             <button

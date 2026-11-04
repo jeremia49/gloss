@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { pdfjsLib, TextLayer } from "./pdfSetup";
 import { api, type ChatAttachment, type DrawingTool } from "../api/client";
 import { useStore } from "../store";
+import { useReadAloud } from "../readAloud";
 import { SelectionPopover } from "../components/SelectionPopover";
+import { ReadAloudBar } from "../components/ReadAloudBar";
 
 const DRAW_COLORS = ["#ef6b6b", "#ffd54f", "#7aa2f7", "#4fb8a0", "#ce93d8"];
 const BRUSHES: Record<DrawingTool, { widths: number[]; defaultWidth: number }> = {
@@ -113,6 +115,31 @@ export function PdfViewer() {
   const [draft, setDraft] = useState<DraftStroke | null>(null);
   const draftRef = useRef<DraftStroke | null>(null);
   const [lassoDraft, setLassoDraft] = useState<LassoDraft | null>(null);
+  // Most-visible page (for read-aloud "start here").
+  const [visiblePage, setVisiblePage] = useState(0);
+  const readAloudActive = useReadAloud((s) => s.active);
+  const readAloudStart = useReadAloud((s) => s.start);
+  const readAloudStop = useReadAloud((s) => s.stop);
+
+  // Track which page occupies most of the viewport while scrolling.
+  const onScroll = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    const mid = container.scrollTop + container.clientHeight / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < pageRefs.current.length; i++) {
+      const el = pageRefs.current[i];
+      if (!el) continue;
+      const center = el.offsetTop + el.offsetHeight / 2;
+      const dist = Math.abs(center - mid);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    setVisiblePage(best);
+  };
   const lassoDraftRef = useRef<LassoDraft | null>(null);
   const [lassoCapture, setLassoCapture] = useState<LassoCapture | null>(null);
 
@@ -142,6 +169,9 @@ export function PdfViewer() {
     setLassoDraft(null);
     lassoDraftRef.current = null;
     setLassoCapture(null);
+    setVisiblePage(0);
+    // stop read-aloud when switching papers (the bar follows the open paper)
+    if (useReadAloud.getState().active) readAloudStop();
   }, [current?.id]);
 
   // Render all pages whenever the doc is ready or the scale changes.
@@ -470,6 +500,19 @@ export function PdfViewer() {
     localStorage.setItem(`gloss.layer.${key}`, value ? "1" : "0");
   }
 
+  function toggleReadAloud() {
+    if (readAloudActive) {
+      readAloudStop();
+      return;
+    }
+    readAloudStart({
+      paperId: current.id,
+      nPages: current.n_pages,
+      page: Math.min(visiblePage, current.n_pages - 1),
+      source: "page",
+    });
+  }
+
   if (!current) return null;
   const n = current.n_pages;
 
@@ -483,6 +526,17 @@ export function PdfViewer() {
           <button onClick={() => setScale((s) => Math.max(0.6, s - 0.15))}>−</button>
           <span>{Math.round(scale * 100)}%</span>
           <button onClick={() => setScale((s) => Math.min(3, s + 0.15))}>+</button>
+        </div>
+        <div className="pdf-read-aloud">
+          <button
+            className={`pdf-disp-btn ${readAloudActive ? "active" : ""}`}
+            title={uiLang === "zh"
+              ? (readAloudActive ? "停止朗读" : "朗读当前页面（从可见页开始）")
+              : (readAloudActive ? "Stop read aloud" : "Read aloud from the visible page")}
+            onClick={toggleReadAloud}
+          >
+            🔊
+          </button>
         </div>
         <div className="pdf-annotate">
           <button
@@ -601,7 +655,7 @@ export function PdfViewer() {
           </div>
         </div>
       )}
-      <div className={`pdf-scroll draw-${drawTool}`} ref={containerRef} onMouseUp={onMouseUp}>
+      <div className={`pdf-scroll draw-${drawTool}`} ref={containerRef} onMouseUp={onMouseUp} onScroll={onScroll}>
         {Array.from({ length: n }).map((_, i) => {
           const pinfo = pages?.pages[i];
           const scaleFromPdf = pinfo ? scale : scale;
@@ -724,6 +778,7 @@ export function PdfViewer() {
           );
         })}
       </div>
+      <ReadAloudBar />
       {popover && (
         <SelectionPopover pos={popover} onClose={() => setPopover(null)} />
       )}

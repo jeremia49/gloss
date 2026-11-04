@@ -30,6 +30,7 @@ from .routers import (
     settings,
     skills,
     tasks,
+    tts,
     usage,
 )
 
@@ -88,6 +89,7 @@ app.include_router(skills.router)
 app.include_router(settings.router)
 app.include_router(usage.router)
 app.include_router(tasks.router)
+app.include_router(tts.router)
 
 
 # ---------------------------------------------------------------------------

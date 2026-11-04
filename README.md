@@ -76,6 +76,7 @@ workspace. For the interactive product tour, visit the
 | 💬 **Chat** | Ask like a colleague — **BM25 retrieval (RAG)** over the whole paper, **persistent Codex sessions**, editable auto-titles, streaming, and multiple saved chats per paper |
 | 💡 **Explain** | Select an equation / term / table and get a one-shot explanation; math rendered with **KaTeX** |
 | 🌐 **Translate** | **Sentence-level**, **persistently cached**, **reused across page ranges**; translation-only by default with a show-original toggle; **click a sentence to flash-locate it in the PDF**; for arXiv, **translate the exact LaTeX source** so nothing is missed |
+| 🗣️ **Read aloud** | Text-to-speech for the whole paper — 🔊 in the PDF toolbar reads from the visible page and **auto-advances**; select any text → **🔊 Read aloud**; works with any **OpenAI-compatible `/v1/audio/speech` endpoint** (e.g. `edge-tts/…` voices) and caches audio locally |
 | 📐 **arXiv LaTeX** | A **TeX tab** to read the paper's LaTeX source (exact, no extraction loss) — and translate from it |
 | 🖍️ **Auto-highlight** | The AI picks key sentences by category and **anchors colored highlights onto the PDF** |
 | ✍️ **Annotations** | Personal notes, multi-color highlights, pencil, pen, highlighter and eraser, all saved locally on the page |
@@ -235,6 +236,11 @@ The `openai` entry can point at a **local vLLM** or **claude proxy** (e.g. `http
 **translation target language** are also configurable (both default to Simplified Chinese). Keys are masked by the
 Settings API and runtime data directories are outside version control, so secrets never enter the repository.
 
+**Read aloud (TTS):** the Settings page also has a **text-to-speech** section — point `base_url` at any
+OpenAI-compatible endpoint that serves `/v1/audio/speech` (e.g. `https://9router.jeremia.my.id/v1` with an
+`edge-tts/en-AU-WilliamMultilingualNeural` model), add the key, and use **Test read aloud** to verify. Synthesized
+audio is cached on disk, so replaying a page is instant.
+
 ---
 
 ## 🏗️ Architecture
@@ -243,7 +249,7 @@ Settings API and runtime data directories are outside version control, so secret
 backend/          FastAPI (one process mounts every /api/*, and serves the built frontend SPA)
   app/providers/  local_claude · local_codex · anthropic · openai · registry (LLM abstraction)
   app/pdf/        PyMuPDF parsing (text blocks + bboxes) + structure heuristics (sections/refs/sentences)
-  app/features/   summarize · explain · translate · chat(RAG) · highlight · notes · mindmap · citations
+  app/features/   summarize · explain · translate · chat(RAG) · highlight · notes · mindmap · citations · tts
   app/search/     Scholar search / recommend (Semantic Scholar / arXiv)
   app/skills/     discover & run Claude/Codex SKILL.md skills
   app/library/    SQLite store + importers (arXiv/DOI/PDF)

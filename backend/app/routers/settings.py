@@ -17,6 +17,7 @@ class SettingsPatch(BaseModel):
     target_language: str | None = None
     providers: dict | None = None
     feature_settings: dict | None = None
+    tts: dict | None = None
 
 
 @router.get("")
@@ -57,6 +58,12 @@ async def update_settings(body: SettingsPatch):
             registry.reset_status(name)
     if body.feature_settings is not None:
         patch["feature_settings"] = body.feature_settings
+    if body.tts is not None:
+        tc = dict(body.tts)
+        # ignore the masked api_key sentinel so we never overwrite a real key with "set"
+        if tc.get("api_key") in ("set", ""):
+            tc.pop("api_key", None)
+        patch["tts"] = tc
     config.save_config(patch)
     return {"config": config.public_config()}
 

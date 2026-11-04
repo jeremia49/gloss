@@ -74,6 +74,7 @@ React / PDF.js 的阅读器界面，并驱动一个大模型帮你速览、研�
 | 💬 **对话 Chat** | 像同事一样提问 —— 基于全篇 **BM25 检索（RAG）** 作答，支持**持久化 Codex 会话**、自动且可编辑的标题、流式输出与多会话 |
 | 💡 **解释 Explain** | 选中一段公式 / 术语 / 表格，一次性解释清楚；数学用 **KaTeX** 渲染 |
 | 🌐 **翻译 Translate** | **逐句翻译**、结果 **持久缓存**、**跨页范围复用**；默认只显示中文，可切换 **显示原文**；**点击译文可在 PDF 中闪烁定位**；arXiv 论文可 **直接翻译 LaTeX 源**，不漏文本 |
+| 🔊 **朗读 Read aloud** | 论文文字转语音 —— 工具栏 🔊 从当前可见页开始朗读并 **自动翻页**；选中任意文字可 **🔊 朗读**；兼容任何 **OpenAI `/v1/audio/speech` 端点**（如 `edge-tts/…` 音色），音频本地缓存 |
 | 📐 **arXiv LaTeX** | **TeX 源码标签**：读取论文 LaTeX 源（精确、无提取损失），并可从源翻译 |
 | 🖍️ **自动高亮 Auto-highlight** | AI 按类别挑出关键句，并 **锚定到 PDF 原文位置** 标色 |
 | ✍️ **批注 Annotations** | 个人笔记、彩色高亮、铅笔、写字笔、荧光笔与橡皮擦，全部锚定在页面并本地保存 |
@@ -226,6 +227,10 @@ ssh -N -L 8010:127.0.0.1:8010 -p <SSH端口> user@server
 **思考深度 / reasoning effort**（`local_claude`：`low … max`；`local_codex`：`minimal … high`）。**回答语言** 与
 **翻译目标语言** 也都可配（默认均为中文）。key 会被 Settings API 掩码，运行时数据目录不进入版本库。
 
+**朗读（TTS）：** Settings 里还有 **文字转语音** 一节 —— `base_url` 指向任意提供 `/v1/audio/speech`
+的 OpenAI 兼容端点（如 `https://9router.jeremia.my.id/v1`，模型 `edge-tts/en-AU-WilliamMultilingualNeural`），
+填好 key 后点 **测试朗读** 验证。合成音频会缓存到本地，重听同一页即时播放。
+
 ---
 
 ## 🏗️ 架构简述
@@ -234,7 +239,7 @@ ssh -N -L 8010:127.0.0.1:8010 -p <SSH端口> user@server
 backend/          FastAPI（一个进程挂载所有 /api/*，并托管已构建的前端 SPA）
   app/providers/  local_claude · local_codex · anthropic · openai · registry（LLM 抽象层）
   app/pdf/        PyMuPDF 解析（文本块 + bbox）+ 结构启发式（章节/引用/分句）
-  app/features/   summarize · explain · translate · chat(RAG) · highlight · notes · mindmap · citations
+  app/features/   summarize · explain · translate · chat(RAG) · highlight · notes · mindmap · citations · tts
   app/search/     scholar 检索 / 推荐（Semantic Scholar / arXiv）
   app/skills/     发现并运行 Claude/Codex 的 SKILL.md 技能
   app/library/    SQLite 库 + 导入器（arXiv/DOI/PDF）

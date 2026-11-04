@@ -35,6 +35,8 @@ export function SettingsPanel() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [usage, setUsage] = useState<AiUsageSummary | null>(null);
+  const [ttsTesting, setTtsTesting] = useState(false);
+  const [ttsTestResult, setTtsTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
 
   const T = {
@@ -82,6 +84,38 @@ export function SettingsPanel() {
     }));
   }
 
+  function setTts(field: string, val: unknown) {
+    setCfg((c: Record<string, unknown>) => ({
+      ...c,
+      tts: { ...((c.tts as Record<string, unknown>) || {}), [field]: val },
+    }));
+  }
+
+  async function testTtsConn() {
+    setTtsTesting(true);
+    setTtsTestResult(null);
+    try {
+      // persist what's on screen so the test runs against the shown values;
+      // the backend keeps masked keys untouched when the field is blank
+      await save(false);
+      const r = await api.testTts({
+        base_url: cfg.tts?.base_url || "",
+        model: cfg.tts?.model || "",
+        // send the typed key only when the user entered a fresh one
+        ...(cfg.tts?.api_key && cfg.tts.api_key !== "set" ? { api_key: cfg.tts.api_key } : {}),
+      });
+      setTtsTestResult(
+        r.ok
+          ? { ok: true, text: uiLang === "zh" ? `✓ 朗读可用（${r.bytes ?? 0} 字节）` : `✓ Read aloud works (${r.bytes ?? 0} bytes)` }
+          : { ok: false, text: `✗ ${r.error || "failed"}` },
+      );
+    } catch (e) {
+      setTtsTestResult({ ok: false, text: `✗ ${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      setTtsTesting(false);
+    }
+  }
+
   async function save(checkConnection = true) {
     setSaving(true);
     try {
@@ -92,6 +126,7 @@ export function SettingsPanel() {
         target_language: cfg.target_language,
         providers: cfg.providers,
         feature_settings: cfg.feature_settings || {},
+        tts: cfg.tts || {},
       });
       await loadSettings();
       if (checkConnection) await checkProvider(cfg.provider);
@@ -294,6 +329,57 @@ export function SettingsPanel() {
         <label>api key</label>
         <input type="password" placeholder={cfg.providers.openai.api_key === "set" ? "•••• saved" : "sk-…"}
           onChange={(e) => setProv("openai", "api_key", e.target.value)} />
+      </fieldset>
+
+      <fieldset>
+        <legend>{uiLang === "zh" ? "朗读 / text-to-speech (OpenAI 兼容 /v1/audio/speech)" : "Read aloud / text-to-speech (OpenAI-compatible /v1/audio/speech)"}</legend>
+        <label>base_url</label>
+        <input
+          value={cfg.tts?.base_url || ""}
+          placeholder="https://9router.jeremia.my.id/v1"
+          onChange={(e) => setTts("base_url", e.target.value)}
+        />
+        <label>model</label>
+        <input
+          value={cfg.tts?.model || ""}
+          placeholder="edge-tts/en-AU-WilliamMultilingualNeural"
+          onChange={(e) => setTts("model", e.target.value)}
+        />
+        <label>voice (optional)</label>
+        <input
+          value={cfg.tts?.voice || ""}
+          placeholder="alloy"
+          onChange={(e) => setTts("voice", e.target.value)}
+        />
+        <label>api key</label>
+        <input
+          type="password"
+          placeholder={cfg.tts?.api_key === "set" ? "•••• saved" : "sk-…"}
+          onChange={(e) => setTts("api_key", e.target.value)}
+        />
+        <label>response format</label>
+        <select value={cfg.tts?.response_format || "mp3"} onChange={(e) => setTts("response_format", e.target.value)}>
+          {["mp3", "opus", "aac", "flac", "wav"].map((f) => <option key={f} value={f}>{f}</option>)}
+        </select>
+        <label>{uiLang === "zh" ? "语速 (0.25–4.0)" : "speed (0.25–4.0)"}</label>
+        <input
+          type="number"
+          min="0.25"
+          max="4"
+          step="0.05"
+          value={cfg.tts?.speed ?? 1}
+          onChange={(e) => setTts("speed", Number(e.target.value))}
+        />
+        <div className="test-conn">
+          <button className="small" onClick={() => void testTtsConn()} disabled={ttsTesting}>
+            {ttsTesting
+              ? (uiLang === "zh" ? "测试中…" : "Testing…")
+              : (uiLang === "zh" ? "🔊 测试朗读" : "🔊 Test read aloud")}
+          </button>
+          {ttsTestResult && (
+            <span className={"test-result " + (ttsTestResult.ok ? "ok" : "bad")}>{ttsTestResult.text}</span>
+          )}
+        </div>
       </fieldset>
 
       <button className="primary" onClick={() => void save()} disabled={saving}>

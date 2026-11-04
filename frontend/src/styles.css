@@ -926,3 +926,38 @@ button.small { font-size: 12px; padding: 3px 8px; margin-top: 6px; }
   .feature-settings-workbench { display: block; }
   .feature-settings-nav { max-height: 165px; border-right: 0; border-bottom: 1px solid var(--border); }
 }
+
+/* Read-aloud (TTS) player bar */
+.pdf-wrap { position: relative; }
+.read-aloud-bar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 14px 0;
+  padding: 7px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.read-aloud-bar .ra-icon { font-size: 15px; }
+.read-aloud-bar .ra-label { font-size: 12.5px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+.read-aloud-bar .ra-status { font-size: 11.5px; color: var(--fg-dim); white-space: nowrap; }
+.read-aloud-bar .ra-status.ra-error { color: var(--danger); }
+.read-aloud-bar .ra-controls { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.read-aloud-bar .ra-controls button {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--fg);
+  font-size: 12px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.read-aloud-bar .ra-controls button:hover:not(:disabled) { border-color: var(--accent); }
+.read-aloud-bar .ra-controls button:disabled { opacity: 0.45; cursor: default; }
+.read-aloud-bar .ra-controls .ra-play { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.read-aloud-bar .ra-controls .ra-stop:hover { border-color: var(--danger); color: var(--danger); }
