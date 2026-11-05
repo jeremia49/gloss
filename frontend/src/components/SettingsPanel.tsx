@@ -101,6 +101,7 @@ export function SettingsPanel() {
       const r = await api.testTts({
         base_url: cfg.tts?.base_url || "",
         model: cfg.tts?.model || "",
+        instructions: cfg.tts?.instructions || "",
         // send the typed key only when the user entered a fresh one
         ...(cfg.tts?.api_key && cfg.tts.api_key !== "set" ? { api_key: cfg.tts.api_key } : {}),
       });
@@ -351,6 +352,20 @@ export function SettingsPanel() {
           placeholder="alloy"
           onChange={(e) => setTts("voice", e.target.value)}
         />
+        <label>{uiLang === "zh" ? "朗读提示词（可选）" : "custom prompt (optional)"}</label>
+        <textarea
+          rows={3}
+          value={cfg.tts?.instructions || ""}
+          placeholder={uiLang === "zh"
+            ? "例如：用平静、清晰的学术讲解语气，语速稍慢。"
+            : "e.g. Speak in a calm, clear lecturer tone, slightly slower, pronounce technical terms carefully."}
+          onChange={(e) => setTts("instructions", e.target.value)}
+        />
+        <div className="muted field-hint">
+          {uiLang === "zh"
+            ? "作为 instructions 字段随每次朗读请求发送，用于控制语气、语速、口音；不会被读出来。部分模型（如 edge-tts）会忽略它。"
+            : "Sent as the instructions field with every speech request to steer tone, pace and accent — it is not read aloud. Some models (e.g. edge-tts) ignore it."}
+        </div>
         <label>api key</label>
         <input
           type="password"

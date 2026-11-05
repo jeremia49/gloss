@@ -634,9 +634,9 @@ export const api = {
     }).then((r) => j<{ chunks: string[] }>(r)),
   getTtsConfig: () =>
     fetch("/api/tts/config").then((r) =>
-      j<{ configured: boolean; model: string; voice: string; response_format: string; speed: number; language: string }>(r),
+      j<{ configured: boolean; model: string; voice: string; instructions: string; response_format: string; speed: number; language: string }>(r),
     ),
-  testTts: (body: { base_url?: string; api_key?: string; model?: string }) =>
+  testTts: (body: { base_url?: string; api_key?: string; model?: string; instructions?: string }) =>
     fetch("/api/tts/test", {
       method: "POST",
       headers: { "content-type": "application/json" },

@@ -141,6 +141,43 @@ def test_synthesize_roundtrip_and_disk_cache(tmp_path, monkeypatch):
     assert list(tmp_path.glob("*.mp3")), "cache file was written"
 
 
+def test_custom_prompt_is_sent_as_instructions_and_keys_the_cache(tmp_path, monkeypatch):
+    import json
+
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.read()))
+        return httpx.Response(200, content=b"A")
+
+    transport = httpx.MockTransport(handler)
+
+    class FakeClient(httpx.AsyncClient):
+        def __init__(self, **kwargs):
+            kwargs.pop("proxy", None)
+            super().__init__(transport=transport, **kwargs)
+
+    monkeypatch.setattr(tts_feat, "external_client", lambda **kwargs: FakeClient(**kwargs))
+    monkeypatch.setattr(tts_feat, "_TTS_DIR", tmp_path)
+
+    _apply_config(monkeypatch, instructions="")
+    asyncio.run(tts_feat.synthesize("Same sentence."))
+    assert "instructions" not in bodies[-1]
+
+    _apply_config(monkeypatch, instructions="Speak slowly, like a lecturer.")
+    asyncio.run(tts_feat.synthesize("Same sentence."))
+    # a new prompt changes the audio, so it must not be served from the old cache
+    assert len(bodies) == 2
+    assert bodies[-1]["instructions"] == "Speak slowly, like a lecturer."
+    assert bodies[-1]["input"] == "Same sentence."  # the prompt is never spoken
+
+
+def test_custom_prompt_round_trips_through_settings(client):
+    _configure(client, instructions="Calm, clear voice.")
+    assert tts_feat.tts_settings()["instructions"] == "Calm, clear voice."
+    assert client.get("/api/tts/config").json()["instructions"] == "Calm, clear voice."
+
+
 def test_synthesize_requires_configuration(monkeypatch):
     _apply_config(monkeypatch, base_url="", api_key="", model="")
     with pytest.raises(ValueError, match="not configured"):
@@ -235,6 +272,7 @@ def _apply_config(monkeypatch, **overrides):
         "api_key": "sk-test",
         "model": "edge-tts/test",
         "voice": "",
+        "instructions": "",
         "response_format": "mp3",
         "speed": 1.0,
         "timeout": 30,
@@ -255,6 +293,7 @@ def _reset_tts_config(client):
             "api_key": "",
             "model": "",
             "voice": "",
+            "instructions": "",
             "response_format": "mp3",
             "speed": 1.0,
         }

@@ -238,8 +238,10 @@ Settings API and runtime data directories are outside version control, so secret
 
 **Read aloud (TTS):** the Settings page also has a **text-to-speech** section — point `base_url` at any
 OpenAI-compatible endpoint that serves `/v1/audio/speech` (e.g. `https://9router.jeremia.my.id/v1` with an
-`edge-tts/en-AU-WilliamMultilingualNeural` model), add the key, and use **Test read aloud** to verify. Synthesized
-audio is cached on disk, so replaying a page is instant.
+`edge-tts/en-AU-WilliamMultilingualNeural` model), add the key, and use **Test read aloud** to verify. The optional
+**custom prompt** is sent as the `instructions` field (e.g. "calm lecturer tone, slightly slower") to steer how the
+text is spoken; models that don't support it (such as edge-tts) ignore it. Synthesized audio is cached on disk, so
+replaying a page is instant.
 
 ---
 

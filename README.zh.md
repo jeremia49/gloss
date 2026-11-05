@@ -229,7 +229,8 @@ ssh -N -L 8010:127.0.0.1:8010 -p <SSH端口> user@server
 
 **朗读（TTS）：** Settings 里还有 **文字转语音** 一节 —— `base_url` 指向任意提供 `/v1/audio/speech`
 的 OpenAI 兼容端点（如 `https://9router.jeremia.my.id/v1`，模型 `edge-tts/en-AU-WilliamMultilingualNeural`），
-填好 key 后点 **测试朗读** 验证。合成音频会缓存到本地，重听同一页即时播放。
+填好 key 后点 **测试朗读** 验证。可选的 **自定义提示词** 会作为 `instructions` 字段发送（如“平静的讲课语气，稍慢”），
+用于控制朗读方式；不支持该字段的模型（如 edge-tts）会忽略它。合成音频会缓存到本地，重听同一页即时播放。
 
 ---
 

@@ -40,6 +40,8 @@ def tts_settings() -> dict:
         "api_key": (cfg.get("api_key") or "").strip(),
         "model": (cfg.get("model") or "").strip(),
         "voice": (cfg.get("voice") or "").strip(),
+        # free-form style prompt, sent as OpenAI's `instructions` field
+        "instructions": (cfg.get("instructions") or "").strip(),
         "response_format": fmt,
         "speed": speed,
         "timeout": cfg.get("timeout", 120),
@@ -111,7 +113,7 @@ def chunk_text(text: str, max_chars: int = _CHUNK_CHARS) -> list[str]:
 
 def _cache_key(text: str, s: dict) -> str:
     raw = "\x00".join(
-        ["v1", text, s["model"], s["voice"], s["response_format"], f"{s['speed']:g}"]
+        ["v1", text, s["model"], s["voice"], s["response_format"], f"{s['speed']:g}", s["instructions"]]
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -158,6 +160,8 @@ async def _synthesize_chunk(text: str, s: dict) -> bytes:
     }
     if s["voice"]:
         body["voice"] = s["voice"]
+    if s["instructions"]:
+        body["instructions"] = s["instructions"]
     if s["speed"] != 1.0:
         body["speed"] = s["speed"]
     headers = {

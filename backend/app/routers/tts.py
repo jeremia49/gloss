@@ -74,6 +74,7 @@ async def tts_config():
         "model": s["model"],
         "voice": s["voice"],
         "response_format": s["response_format"],
+        "instructions": s["instructions"],
         "speed": s["speed"],
         "language": load_config().get("output_language", ""),
     }
@@ -83,6 +84,7 @@ class TestBody(BaseModel):
     base_url: str | None = None
     api_key: str | None = None
     model: str | None = None
+    instructions: str | None = None
 
 
 @router.post("/test")
@@ -91,14 +93,20 @@ async def test_tts(body: TestBody):
     base = (body.base_url or tts_feat.tts_settings()["base_url"]).strip().rstrip("/")
     key = body.api_key or tts_feat.tts_settings()["api_key"]
     model = (body.model or tts_feat.tts_settings()["model"]).strip()
+    instructions = (
+        body.instructions if body.instructions is not None else tts_feat.tts_settings()["instructions"]
+    ).strip()
     if not base or not key or not model:
         return {"ok": False, "error": "base_url, api_key and model are all required"}
+    payload = {"model": model, "input": "Hello"}
+    if instructions:
+        payload["instructions"] = instructions
     try:
         async with httpx.AsyncClient(timeout=20, trust_env=False) as client:
             r = await client.post(
                 base + "/audio/speech",
                 headers={"Authorization": f"Bearer {key}"},
-                json={"model": model, "input": "Hello"},
+                json=payload,
             )
     except httpx.HTTPError as e:
         return {"ok": False, "error": f"connection failed: {e}"}

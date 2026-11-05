@@ -157,6 +157,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "model": "edge-tts/en-AU-WilliamMultilingualNeural",
         # OpenAI-style voice name; may be ignored by edge-tts style models
         "voice": "",
+        # custom prompt steering how the text is spoken (tone, pace, accent…);
+        # sent as the OpenAI `instructions` field, never read aloud
+        "instructions": "",
         # audio container the endpoint returns: "mp3" | "opus" | "aac" | "flac"
         "response_format": "mp3",
         # 0.25–4.0 (most edge-tts gateways ignore this)
