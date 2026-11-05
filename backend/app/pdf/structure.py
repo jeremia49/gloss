@@ -27,7 +27,8 @@ _HEADING_NOISE = re.compile(
 )
 
 
-def _body_size(pages: list[dict]) -> float:
+def body_font_size(pages: list[dict]) -> float:
+    """Median block font size — the paper's body text size."""
     sizes = [b["size"] for p in pages for b in p["blocks"] if b.get("text")]
     if not sizes:
         return 10.0
@@ -40,7 +41,7 @@ def _body_size(pages: list[dict]) -> float:
 def detect_sections(parsed: dict) -> list[dict]:
     """Return a flat list of {title, page, block_id, level} section headers."""
     pages = parsed["pages"]
-    body = _body_size(pages)
+    body = body_font_size(pages)
     sections: list[dict] = []
 
     # Prefer the embedded TOC if the PDF has one.

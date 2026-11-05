@@ -934,20 +934,34 @@ button.small { font-size: 12px; padding: 3px 8px; margin-top: 6px; }
   top: 0;
   z-index: 15;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   margin: 8px 14px 0;
-  padding: 7px 12px;
+  padding: 7px 12px 8px;
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
+.read-aloud-bar .ra-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .read-aloud-bar .ra-icon { font-size: 15px; }
-.read-aloud-bar .ra-label { font-size: 12.5px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+.read-aloud-bar .ra-label { font-size: 12.5px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.read-aloud-bar .ra-section {
+  max-width: 260px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px 6px;
+}
 .read-aloud-bar .ra-status { font-size: 11.5px; color: var(--fg-dim); white-space: nowrap; }
 .read-aloud-bar .ra-status.ra-error { color: var(--danger); }
-.read-aloud-bar .ra-controls { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.read-aloud-bar .ra-status.ra-skipnote { font-style: italic; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.read-aloud-bar .ra-controls { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.read-aloud-bar .ra-skip { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--fg-dim); white-space: nowrap; cursor: pointer; margin-right: 4px; }
 .read-aloud-bar .ra-controls button {
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -961,3 +975,30 @@ button.small { font-size: 12px; padding: 3px 8px; margin-top: 6px; }
 .read-aloud-bar .ra-controls button:disabled { opacity: 0.45; cursor: default; }
 .read-aloud-bar .ra-controls .ra-play { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .read-aloud-bar .ra-controls .ra-stop:hover { border-color: var(--danger); color: var(--danger); }
+/* overall progress: spoken (solid) over synthesized-ahead (faint) */
+.ra-progress { position: relative; height: 4px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
+.ra-progress-buffered, .ra-progress-played { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; transition: width 0.25s linear; }
+.ra-progress-buffered { background: var(--accent); opacity: 0.3; }
+.ra-progress-played { background: var(--accent); }
+/* synthesizing the paragraph about to play: moving stripe */
+.ra-progress.busy::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: ra-busy 1.1s ease-in-out infinite;
+}
+@keyframes ra-busy { from { left: -30%; } to { left: 100%; } }
+/* the paragraph being read, outlined on the PDF page */
+.reading-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.reading-rect {
+  position: absolute;
+  border-radius: 3px;
+  background: rgba(100, 181, 246, 0.16);
+  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.85);
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+.reading-rect.loading { animation: reading-pulse 1.2s ease-in-out infinite; }
+@keyframes reading-pulse { 50% { box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.3); } }

@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..features import read_plan
 from ..features import tts as tts_feat
 
 router = APIRouter(prefix="/api/tts", tags=["tts"])
@@ -22,22 +23,15 @@ _MEDIA_TYPES = {
 
 
 class SpeakBody(BaseModel):
-    text: str | None = None
-    paper_id: str | None = None
-    page: int | None = None
+    text: str
 
 
 @router.post("/speak")
 async def speak(body: SpeakBody):
-    """Synthesize ad-hoc text, or one parsed PDF page, to audio bytes."""
+    """Synthesize one piece of text (a paragraph or a selection chunk) to audio bytes."""
     text = (body.text or "").strip()
     if not text:
-        if not body.paper_id or body.page is None:
-            raise HTTPException(400, "provide text, or paper_id + page")
-        try:
-            text = tts_feat.page_text(body.paper_id, body.page)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
+        raise HTTPException(400, "provide text")
     try:
         audio = await tts_feat.synthesize(text)
     except ValueError as e:
@@ -50,6 +44,25 @@ async def speak(body: SpeakBody):
         media_type=_MEDIA_TYPES.get(fmt, "audio/mpeg"),
         headers={"Cache-Control": "no-store"},
     )
+
+
+@router.get("/plan/{paper_id}")
+async def plan(paper_id: str):
+    """The paper as ordered speakable paragraphs (with bboxes, sections, skip tags)."""
+    try:
+        return read_plan.paper_plan(paper_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+class ChunksBody(BaseModel):
+    text: str
+
+
+@router.post("/chunks")
+async def chunks(body: ChunksBody):
+    """Split ad-hoc text into the pieces the UI synthesizes one by one (for progress)."""
+    return {"chunks": tts_feat.chunk_text(tts_feat.clean_for_speech(body.text or ""))}
 
 
 @router.get("/config")

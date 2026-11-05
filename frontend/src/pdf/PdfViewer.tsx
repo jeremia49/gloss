@@ -118,8 +118,10 @@ export function PdfViewer() {
   // Most-visible page (for read-aloud "start here").
   const [visiblePage, setVisiblePage] = useState(0);
   const readAloudActive = useReadAloud((s) => s.active);
-  const readAloudStart = useReadAloud((s) => s.start);
+  const readAloudPaper = useReadAloud((s) => s.readPaper);
   const readAloudStop = useReadAloud((s) => s.stop);
+  const readingSeg = useReadAloud((s) => (s.active ? s.segments[s.index] ?? null : null));
+  const readingLoading = useReadAloud((s) => s.loading);
 
   // Track which page occupies most of the viewport while scrolling.
   const onScroll = () => {
@@ -245,6 +247,24 @@ export function PdfViewer() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     setGoto(null);
   }, [gotoPage]);
+
+  // Follow along: keep the paragraph being read in view (only scroll when it
+  // isn't already comfortably visible, so manual scrolling isn't fought).
+  useEffect(() => {
+    if (!readingSeg) return;
+    const container = containerRef.current;
+    const holder = pageRefs.current[readingSeg.page];
+    if (!container || !holder) return;
+    const [, y0, , y1] = readingSeg.rects[0];
+    const top = holder.offsetTop + y0 * scale;
+    const bottom = holder.offsetTop + y1 * scale;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+    const margin = 20;
+    if (top < viewTop + margin || bottom > viewBottom - margin) {
+      container.scrollTo({ top: Math.max(0, top - container.clientHeight * 0.3), behavior: "smooth" });
+    }
+  }, [readingSeg, scale]);
 
   // Auto-clear a transient flash highlight (from click-to-locate) after a moment.
   useEffect(() => {
@@ -505,12 +525,7 @@ export function PdfViewer() {
       readAloudStop();
       return;
     }
-    readAloudStart({
-      paperId: current.id,
-      nPages: current.n_pages,
-      page: Math.min(visiblePage, current.n_pages - 1),
-      source: "page",
-    });
+    readAloudPaper(current.id, Math.min(visiblePage, current.n_pages - 1));
   }
 
   if (!current) return null;
@@ -767,6 +782,22 @@ export function PdfViewer() {
                         top: r[1] * scale,
                         width: (r[2] - r[0]) * scale,
                         height: (r[3] - r[1]) * scale,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {readingSeg && readingSeg.page === i && (
+                <div className="reading-layer">
+                  {readingSeg.rects.map((r, ri) => (
+                    <div
+                      key={ri}
+                      className={`reading-rect ${readingLoading ? "loading" : ""}`}
+                      style={{
+                        left: r[0] * scale - 3,
+                        top: r[1] * scale - 2,
+                        width: (r[2] - r[0]) * scale + 6,
+                        height: (r[3] - r[1]) * scale + 4,
                       }}
                     />
                   ))}

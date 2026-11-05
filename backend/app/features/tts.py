@@ -14,7 +14,6 @@ from pathlib import Path
 import httpx
 
 from ..config import CACHE_DIR, load_config
-from ..library import store
 from ..net import external_client
 
 # endpoints reject or time out on long inputs; ~1.2k chars is safely inside
@@ -192,19 +191,6 @@ async def _synthesize_chunk(text: str, s: dict) -> bytes:
     tmp.replace(path)
     trim_cache()
     return audio
-
-
-def page_text(paper_id: str, page: int) -> str:
-    """Reading-ordered text of one page (0-based) from the parsed blocks."""
-    parsed = store.load_parsed(paper_id)
-    if not parsed:
-        raise ValueError("paper not parsed")
-    n = parsed.get("n_pages", 0)
-    if page < 0 or page >= n:
-        raise ValueError(f"page out of range (0..{n - 1})")
-    p = parsed["pages"][page]
-    blocks = sorted(p.get("blocks", []), key=lambda b: (b["bbox"][1], b["bbox"][0]))
-    return "\n".join(b.get("text", "").strip() for b in blocks if b.get("text"))
 
 
 def trim_cache(max_bytes: int = 512 * 1024 * 1024) -> None:

@@ -22,6 +22,27 @@ export interface Chat {
   created_at: number;
 }
 
+export type Rect = [number, number, number, number];
+/** One speakable paragraph of a paper (a parsed text block). */
+export interface ReadSegment {
+  page: number;
+  rects: Rect[]; // PDF points
+  text: string;
+  section: number; // index into ReadPlan.sections
+  heading: boolean;
+  /** why a listener might not want this read (authors, contact, references, …) */
+  skip: string | null;
+}
+export interface ReadSection {
+  title: string; // "" for the untitled front matter
+  level: number;
+  start: number; // first segment index
+}
+export interface ReadPlan {
+  segments: ReadSegment[];
+  sections: ReadSection[];
+}
+
 export type ImportJobStatus =
   | "queued"
   | "downloading"
@@ -593,24 +614,24 @@ export const api = {
     }).then((r) => j<ProviderTestResult>(r)),
 
   // read-aloud (text to speech) — audio bytes come back, the browser plays them
-  speakText: (text: string) =>
+  speakText: (text: string, signal?: AbortSignal) =>
     fetch("/api/tts/speak", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text }),
+      signal,
     }).then(async (r) => {
       if (!r.ok) throw new Error((await r.text()).slice(0, 300) || `HTTP ${r.status}`);
       return r.blob();
     }),
-  speakPage: (paperId: string, page: number) =>
-    fetch("/api/tts/speak", {
+  getReadPlan: (paperId: string) =>
+    fetch(`/api/tts/plan/${encodeURIComponent(paperId)}`).then((r) => j<ReadPlan>(r)),
+  splitSpeechText: (text: string) =>
+    fetch("/api/tts/chunks", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ paper_id: paperId, page }),
-    }).then(async (r) => {
-      if (!r.ok) throw new Error((await r.text()).slice(0, 300) || `HTTP ${r.status}`);
-      return r.blob();
-    }),
+      body: JSON.stringify({ text }),
+    }).then((r) => j<{ chunks: string[] }>(r)),
   getTtsConfig: () =>
     fetch("/api/tts/config").then((r) =>
       j<{ configured: boolean; model: string; voice: string; response_format: string; speed: number; language: string }>(r),

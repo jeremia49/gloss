@@ -9,6 +9,8 @@
 
 - 新增论文 **朗读（Read aloud）**：PDF 工具栏 🔊 从当前可见页开始朗读并自动翻页，选中任意文字可单独朗读；设置页新增文字转语音（任意 OpenAI 兼容 `/v1/audio/speech` 端点，如 edge-tts 音色），合成音频本地缓存。
 - Added **Read aloud** (text-to-speech): the 🔊 toolbar button reads from the visible page and auto-advances, and any selection can be spoken; Settings gains a TTS section for any OpenAI-compatible `/v1/audio/speech` endpoint (e.g. edge-tts voices), with synthesized audio cached locally.
+- 朗读改为 **按段落朗读**：播放条显示合成/播放 **进度条**，PDF 上 **高亮正在朗读的段落** 并自动跟随滚动；默认 **跳过作者、邮箱、注释、脚注、页眉页脚、图表标题、公式、致谢与参考文献**（可一键关闭），支持 **按章节 ⏮⏭ / 按段落 ◀▶** 前后跳转与章节下拉直达（跳入被跳过的章节时照常朗读）。
+- Read aloud now goes **paragraph by paragraph**: the player bar shows a **progress bar** (spoken / synthesized ahead, with a busy stripe while synthesizing), the paragraph being spoken is **highlighted on the PDF** and followed while scrolling, unimportant parts (authors, e-mail, notes, footnotes, running headers, captions, formulas, acknowledgments, references) are **skipped by default** with a toggle to read everything, and you can move **per section (⏮⏭, section picker) and per paragraph (◀▶)** — jumping into a skipped section reads it anyway.
 - Added Bahasa Indonesia to the Answer language and Translation target options in Settings.
 
 

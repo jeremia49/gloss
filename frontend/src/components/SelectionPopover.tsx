@@ -54,7 +54,7 @@ export function SelectionPopover({
           onClick={() => {
             const paper = useStore.getState().current;
             if (selection && paper) {
-              useReadAloud.getState().speakSelection(paper.id, selection.page, selection.text);
+              useReadAloud.getState().readSelection(paper.id, selection.page, selection.text, selection.rects);
             }
             onClose();
           }}

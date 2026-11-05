@@ -197,32 +197,35 @@ def test_speak_text_returns_audio(client, paper_id, monkeypatch):
     assert r.content == b"FAKE_MP3_BYTES"
 
 
-def test_speak_page_uses_parsed_paper_text(client, paper_id, monkeypatch, pdf_meta):
-    _configure(client)
-    seen: list[str] = []
-
-    async def fake(text: str) -> bytes:
-        seen.append(text)
-        return b"FAKE_MP3_BYTES"
-
-    monkeypatch.setattr(tts_feat, "synthesize", fake)
-    r = client.post("/api/tts/speak", json={"paper_id": paper_id, "page": 0})
-    assert r.status_code == 200, r.text
-    # the page's real extracted text (title etc.) was sent for synthesis
-    assert pdf_meta["title"] in seen[0]
-
-
-def test_speak_validates_its_input(client, paper_id, monkeypatch):
+def test_speak_validates_its_input(client, monkeypatch):
     _configure(client)
     monkeypatch.setattr(tts_feat, "synthesize", _fake_synthesize)
-    # neither text nor paper_id+page
-    assert client.post("/api/tts/speak", json={}).status_code == 400
-    # page out of range
-    r = client.post("/api/tts/speak", json={"paper_id": paper_id, "page": 99})
-    assert r.status_code == 400
-    # unknown paper
-    r = client.post("/api/tts/speak", json={"paper_id": "nope", "page": 0})
-    assert r.status_code == 400
+    assert client.post("/api/tts/speak", json={}).status_code == 422
+    assert client.post("/api/tts/speak", json={"text": "   "}).status_code == 400
+
+
+def test_plan_endpoint_reads_parsed_paper(client, paper_id, pdf_meta):
+    r = client.get(f"/api/tts/plan/{paper_id}")
+    assert r.status_code == 200, r.text
+    plan = r.json()
+    texts = [s["text"] for s in plan["segments"]]
+    assert any(pdf_meta["title"] in t for t in texts)
+    abstract = next(s for s in plan["segments"] if pdf_meta["abstract_sentence"] in s["text"])
+    assert abstract["skip"] is None
+    assert abstract["page"] == 0 and len(abstract["rects"][0]) == 4
+    ref = next(s for s in plan["segments"] if "Vaswani" in s["text"])
+    assert ref["skip"] == "references"
+    titles = [s["title"] for s in plan["sections"]]
+    assert "References" in titles
+    assert client.get("/api/tts/plan/nope").status_code == 404
+
+
+def test_chunks_endpoint_splits_long_text(client):
+    text = " ".join(f"Sentence number {i} is here." for i in range(200))
+    r = client.post("/api/tts/chunks", json={"text": text})
+    chunks = r.json()["chunks"]
+    assert len(chunks) > 1
+    assert all(len(c) <= 1200 for c in chunks)
 
 
 def _apply_config(monkeypatch, **overrides):
@@ -322,3 +325,73 @@ def test_synthesize_bisects_on_server_errors(tmp_path, monkeypatch):
     assert audio == b"OK" * (len(seen_sizes) - 1)
     # the retry pieces were all under the relay's limit
     assert all(size <= 400 for size in seen_sizes[1:])
+
+
+# ---------------------------------------------------------------------------
+# Reading plan (paragraph segments, sections, skip tags)
+# ---------------------------------------------------------------------------
+
+def _blk(bid, bbox, text, size=10.0, bold=False):
+    return {"id": bid, "bbox": bbox, "text": text, "size": size, "font": "", "bold": bold}
+
+
+def _two_column_paper() -> dict:
+    body = "This paragraph explains the method in plain words that are worth hearing aloud."
+    p0 = [
+        _blk(0, [100, 70, 512, 95], "A Study of Reading Aloud", size=20),
+        _blk(1, [150, 105, 462, 120], "Jane Doe, John Roe\nUniversity of Somewhere"),
+        _blk(2, [180, 122, 432, 134], "jane@uni.edu, john@uni.edu"),
+        _blk(3, [72, 160, 300, 172], "Abstract", size=12, bold=True),
+        _blk(4, [72, 175, 300, 260], body),
+        _blk(5, [320, 160, 540, 172], "1 Introduction", size=12, bold=True),
+        _blk(6, [320, 175, 540, 260], body.replace("method", "motivation")),
+        _blk(7, [72, 600, 300, 640], "Figure 1: The pipeline overview."),
+        _blk(8, [72, 700, 300, 720], "*Corresponding author. Work done during an internship.", size=8),
+        _blk(9, [300, 760, 312, 770], "1"),
+    ]
+    p1 = [
+        _blk(10, [72, 72, 300, 84], "Acknowledgments", size=12, bold=True),
+        _blk(11, [72, 90, 300, 120], "We thank everyone who helped with this research project."),
+        _blk(12, [72, 140, 300, 152], "References", size=12, bold=True),
+        _blk(13, [72, 160, 300, 190], "[1] A. Author. Some paper title. NeurIPS 2020."),
+        _blk(14, [72, 300, 300, 312], "Appendix A Proofs", size=12, bold=True),
+        _blk(15, [72, 320, 300, 360], "Here we prove the main theorem step by step for clarity."),
+    ]
+    pages = [
+        {"index": 0, "width": 612, "height": 792, "blocks": p0, "images": []},
+        {"index": 1, "width": 612, "height": 792, "blocks": p1, "images": []},
+    ]
+    return {"n_pages": 2, "pages": pages, "toc": []}
+
+
+def test_reading_plan_tags_skippable_blocks_and_sections():
+    from app.features import read_plan
+
+    plan = read_plan.build_plan(_two_column_paper())
+    skip = {s["text"].split("\n")[0][:20]: s["skip"] for s in plan["segments"]}
+    assert skip["A Study of Reading A"] is None          # title is read
+    assert skip["Jane Doe, John Roe"] == "authors"
+    assert skip["jane@uni.edu, john@u"] == "contact"
+    assert skip["Figure 1: The pipeli"] == "caption"
+    assert skip["*Corresponding autho"] == "note"
+    assert skip["We thank everyone wh"] == "acknowledgments"
+    assert skip["A. Author. Some pape"] == "references"
+    assert skip["Here we prove the ma"] is None          # appendix ends the skipped references
+    assert skip["1"] == "header_footer"                  # page number
+    titles = [s["title"] for s in plan["sections"]]
+    assert titles[:3] == ["", "Abstract", "1 Introduction"]
+    assert "References" in titles and "Appendix A Proofs" in titles
+    for sec_i, sec in enumerate(plan["sections"]):
+        assert plan["segments"][sec["start"]]["section"] == sec_i
+
+
+def test_reading_plan_reads_left_column_before_right():
+    from app.features import read_plan
+
+    plan = read_plan.build_plan(_two_column_paper())
+    texts = [s["text"] for s in plan["segments"]]
+    method = next(i for i, t in enumerate(texts) if "method" in t)
+    intro = texts.index("1 Introduction")
+    caption = next(i for i, t in enumerate(texts) if t.startswith("Figure 1"))
+    # left column (abstract, figure caption) is finished before the right column
+    assert method < caption < intro
