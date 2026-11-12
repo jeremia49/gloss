@@ -7,9 +7,10 @@ and automatic HTTPS in front of the same app:
 iPad ── HTTPS ──> Caddy (80/443) ── private Docker network ──> Gloss (:8010)
 ```
 
-Only Caddy is exposed. The Gloss port is never published to the host or the
-internet. `GLOSS_REQUIRE_AUTH=1` prevents the container from starting without a
-password.
+The bundled Caddy profile exposes 80/443. The default Compose mode starts only
+Gloss, bound to `127.0.0.1:8010`, for servers that already run a reverse proxy.
+Gloss is never published directly to the internet. `GLOSS_REQUIRE_AUTH=1`
+prevents the container from starting without a password.
 
 ## Requirements
 
@@ -29,7 +30,7 @@ cp .env.example .env
 # Edit .env: set GLOSS_DOMAIN and a long random GLOSS_PASSWORD.
 # Generate one with: openssl rand -hex 24
 
-docker compose up -d --build
+docker compose --profile caddy up -d --build
 docker compose logs -f caddy
 ```
 
@@ -38,6 +39,34 @@ certificate automatically. Sign in with `GLOSS_USERNAME` and `GLOSS_PASSWORD`.
 
 If the certificate is still being issued, wait for Caddy's log line containing
 `certificate obtained successfully`.
+
+## Existing host reverse proxy
+
+If Caddy or Nginx already owns ports 80/443, skip the bundled Caddy profile:
+
+```bash
+docker compose up -d --build
+```
+
+Gloss listens only on `127.0.0.1:8010`. Add a site to the host Caddy:
+
+```caddyfile
+gloss.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8010
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+}
+```
+
+Validate and restart the host Caddy after changing the upstream. If Caddy had
+previously fallen back to the Let's Encrypt staging CA after DNS failures,
+restart it once DNS resolves so it returns to the production CA.
 
 ## First-run configuration
 
@@ -60,7 +89,11 @@ Keys and papers live in the persistent `gloss-data` volume at `/data`. The
 docker compose ps
 docker compose logs -f gloss
 
-# update
+# update (bundled-Caddy deployments)
+git pull
+docker compose --profile caddy up -d --build
+
+# update (host reverse proxy deployments)
 git pull
 docker compose up -d --build
 

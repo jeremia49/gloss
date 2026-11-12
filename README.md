@@ -204,8 +204,11 @@ data volume:
 
 ```bash
 cp .env.example .env   # set GLOSS_DOMAIN and GLOSS_PASSWORD (openssl rand -hex 24)
-docker compose up -d --build
+docker compose --profile caddy up -d --build
 ```
+
+If ports 80/443 already belong to a host reverse proxy, run
+`docker compose up -d --build` instead and proxy to `127.0.0.1:8010`.
 
 See [docs/hosting.md](docs/hosting.md) for DNS, firewall, backups, provider
 setup, and the non-Docker reverse-proxy option.

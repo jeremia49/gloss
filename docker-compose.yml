@@ -16,8 +16,10 @@ services:
       GLOSS_SECRET_KEY: ${GLOSS_SECRET_KEY:-}
     volumes:
       - gloss-data:/data
-    expose:
-      - "8010"
+    # Loopback-only: reachable by a host reverse proxy (Caddy/Nginx) without
+    # exposing Gloss directly to the internet.
+    ports:
+      - "127.0.0.1:8010:8010"
     healthcheck:
       test:
         - CMD
@@ -32,6 +34,10 @@ services:
       - no-new-privileges:true
 
   caddy:
+    # Bundled HTTPS proxy for a dedicated server. Use
+    # `docker compose --profile caddy up -d --build` when Caddy should own
+    # ports 80/443; the default `docker compose up` starts Gloss only.
+    profiles: ["caddy"]
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
