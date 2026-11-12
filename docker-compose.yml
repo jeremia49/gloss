@@ -1,0 +1,54 @@
+name: gloss
+
+services:
+  gloss:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      GLOSS_PASSWORD: ${GLOSS_PASSWORD:?Set GLOSS_PASSWORD in .env}
+      GLOSS_USERNAME: ${GLOSS_USERNAME:-gloss}
+      GLOSS_SESSION_DAYS: ${GLOSS_SESSION_DAYS:-30}
+      GLOSS_REQUIRE_AUTH: "1"
+      GLOSS_DATA_DIR: /data
+      GLOSS_CACHE_DIR: /data/cache
+      GLOSS_FRONTEND_DIST: /app/frontend/dist
+      GLOSS_SECRET_KEY: ${GLOSS_SECRET_KEY:-}
+    volumes:
+      - gloss-data:/data
+    expose:
+      - "8010"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/api/health', timeout=5)"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      gloss:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      GLOSS_DOMAIN: ${GLOSS_DOMAIN:?Set GLOSS_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  gloss-data:
+  caddy-data:
+  caddy-config:

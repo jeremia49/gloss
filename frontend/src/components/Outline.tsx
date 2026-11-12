@@ -1,7 +1,7 @@
 import { useStore } from "../store";
 
 // Left rail: section outline for quick navigation. Resizable + collapsible (App owns width/collapse).
-export function Outline({ onCollapse }: { onCollapse?: () => void }) {
+export function Outline({ onCollapse, onNavigate }: { onCollapse?: () => void; onNavigate?: () => void }) {
   const pages = useStore((s) => s.pages);
   const setGoto = useStore((s) => s.setGoto);
   const uiLang = useStore((s) => s.uiLang);
@@ -29,7 +29,10 @@ export function Outline({ onCollapse }: { onCollapse?: () => void }) {
             key={i}
             className="outline-item"
             style={{ paddingLeft: 8 + (s.level - 1) * 12 }}
-            onClick={() => setGoto(s.page)}
+            onClick={() => {
+              setGoto(s.page);
+              onNavigate?.();
+            }}
             title={s.title}
           >
             {s.title}

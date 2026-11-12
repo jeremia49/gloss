@@ -13,6 +13,8 @@ backups/
 gloss-local-*.tgz
 # App data (papers, uploads, db, config with keys)
 backend/data/
+# Deployment secrets
+.env
 # Isolated HOME/cwd for the claude & codex CLI subprocesses
 .claude-home/
 .claude-sandbox/

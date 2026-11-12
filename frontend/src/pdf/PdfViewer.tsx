@@ -98,6 +98,12 @@ export function PdfViewer() {
   const addChatAttachment = useStore((s) => s.addChatAttachment);
 
   const [scale, setScale] = useState(1.35);
+  const [fitWidth, setFitWidth] = useState(() => {
+    const saved = localStorage.getItem("gloss.pdfFit");
+    return saved == null
+      ? window.matchMedia("(max-width: 1366px), (pointer: coarse)").matches
+      : saved === "1";
+  });
   const [rendered, setRendered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -107,6 +113,17 @@ export function PdfViewer() {
   const [showNotes, setShowNotes] = useState(() => localStorage.getItem("gloss.layer.notes") !== "0");
   const [showInk, setShowInk] = useState(() => localStorage.getItem("gloss.layer.ink") !== "0");
   const [dispOpen, setDispOpen] = useState(false);
+
+  // Touch screens have no mouseleave: tap anywhere outside to dismiss layers.
+  useEffect(() => {
+    if (!dispOpen) return;
+    const close = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".pdf-disp")) setDispOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [dispOpen]);
   const renderTasksRef = useRef<any[]>([]);
   const [drawTool, setDrawTool] = useState<DrawTool>("select");
   const [brushType, setBrushType] = useState<DrawingTool>(savedBrush);
@@ -163,6 +180,55 @@ export function PdfViewer() {
       } catch {}
     };
   }, [current?.id]);
+
+  // Fit the page to the visible column. Keeps working through rotation and
+  // split-screen resizes; zoom buttons leave this mode.
+  useEffect(() => {
+    if (!fitWidth || !rendered) return;
+    const container = containerRef.current;
+    const doc = docRef.current;
+    if (!container || !doc) return;
+    let frame = 0;
+    let disposed = false;
+    const apply = async () => {
+      try {
+        const page = await doc.getPage(1);
+        if (disposed) return;
+        const baseWidth = page.getViewport({ scale: 1 }).width;
+        const style = window.getComputedStyle(container);
+        const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        const available = Math.max(120, container.clientWidth - padding);
+        const next = Math.min(3, Math.max(0.35, available / baseWidth));
+        setScale((current) => (Math.abs(current - next) < 0.005 ? current : next));
+      } catch {
+        /* document was replaced while measuring */
+      }
+    };
+    const schedule = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => void apply());
+    };
+    schedule();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(container);
+    window.addEventListener("orientationchange", schedule);
+    return () => {
+      disposed = true;
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("orientationchange", schedule);
+    };
+  }, [fitWidth, rendered, current?.id]);
+
+  function setFitMode(next: boolean) {
+    setFitWidth(next);
+    localStorage.setItem("gloss.pdfFit", next ? "1" : "0");
+  }
+
+  function zoomBy(delta: number) {
+    setFitMode(false);
+    setScale((value) => Math.min(3, Math.max(0.6, value + delta)));
+  }
 
   useEffect(() => {
     setDrawTool("select");
@@ -244,7 +310,10 @@ export function PdfViewer() {
   useEffect(() => {
     if (gotoPage == null) return;
     const el = pageRefs.current[gotoPage];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const container = containerRef.current;
+    if (el && container) {
+      container.scrollTo({ top: Math.max(0, el.offsetTop - 8), behavior: "smooth" });
+    }
     setGoto(null);
   }, [gotoPage]);
 
@@ -273,7 +342,7 @@ export function PdfViewer() {
     return () => clearTimeout(t);
   }, [flash?.id]);
 
-  function onMouseUp() {
+  function updateSelectionPopover() {
     if (drawTool !== "select") return;
     const sel = window.getSelection();
     const text = sel?.toString().trim() || "";
@@ -281,6 +350,12 @@ export function PdfViewer() {
       setPopover(null);
       return;
     }
+    // selecting text inside the note editor must not move/close the popover
+    const anchor = sel.anchorNode instanceof Element
+      ? sel.anchorNode
+      : sel.anchorNode?.parentElement;
+    if (anchor?.closest(".sel-popover")) return;
+
     // find the page container of the selection
     let node: Node | null = sel.anchorNode;
     let pageEl: HTMLElement | null = null;
@@ -293,8 +368,7 @@ export function PdfViewer() {
     }
     if (!pageEl) {
       // maybe anchorNode is a text node inside .text-layer
-      const anc = sel.anchorNode?.parentElement?.closest("[data-page-index]") as HTMLElement | null;
-      pageEl = anc;
+      pageEl = sel.anchorNode?.parentElement?.closest("[data-page-index]") as HTMLElement | null;
     }
     if (!pageEl) {
       setPopover(null);
@@ -314,16 +388,34 @@ export function PdfViewer() {
         ] as [number, number, number, number],
     );
     setSelection({ text, page: pageIndex, rects });
-    const last = clientRects[clientRects.length - 1];
-    if (last) {
-      // position the popover in viewport coords, right beside the selection
-      // (rendered position:fixed), clamped so it can't run off the right edge
-      setPopover({
-        x: Math.max(8, Math.min(last.left, window.innerWidth - 330)),
-        y: last.bottom + 8,
-      });
-    }
+    const last = clientRects[clientRects.length - 1] || range.getBoundingClientRect();
+    // position the popover in viewport coords, right beside the selection
+    // (rendered position:fixed), clamped so it can't run off either edge
+    const width = Math.min(560, window.innerWidth - 16);
+    const height = window.innerWidth <= 700 ? 112 : 60;
+    let y = last.bottom + 8;
+    if (y + height > window.innerHeight - 8) y = Math.max(8, last.top - height - 8);
+    setPopover({
+      x: Math.max(8, Math.min(last.left, window.innerWidth - width - 8)),
+      y,
+    });
   }
+
+  // iPad/Safari create selections through the native handles without a usable
+  // mouseup, so mirror mouse selection with a debounced selectionchange.
+  useEffect(() => {
+    if (drawTool !== "select") return;
+    let timer = 0;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(updateSelectionPopover, 220);
+    };
+    document.addEventListener("selectionchange", schedule);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("selectionchange", schedule);
+    };
+  }, [drawTool, scale, current?.id]);
 
   function pointOnPage(event: React.PointerEvent<SVGSVGElement>, page: number): [number, number] {
     const holder = pageRefs.current[page];
@@ -538,9 +630,19 @@ export function PdfViewer() {
           {current.title || "Untitled"}
         </span>
         <div className="zoom">
-          <button onClick={() => setScale((s) => Math.max(0.6, s - 0.15))}>−</button>
+          <button onClick={() => zoomBy(-0.15)} title={uiLang === "zh" ? "缩小" : "Zoom out"}>−</button>
           <span>{Math.round(scale * 100)}%</span>
-          <button onClick={() => setScale((s) => Math.min(3, s + 0.15))}>+</button>
+          <button onClick={() => zoomBy(0.15)} title={uiLang === "zh" ? "放大" : "Zoom in"}>+</button>
+        </div>
+        <div className="pdf-disp">
+          <button
+            className={`pdf-disp-btn${fitWidth ? " active" : ""}`}
+            aria-pressed={fitWidth}
+            title={uiLang === "zh" ? "适合宽度" : "Fit page width"}
+            onClick={() => setFitMode(!fitWidth)}
+          >
+            ↔
+          </button>
         </div>
         <div className="pdf-read-aloud">
           <button
@@ -670,7 +772,7 @@ export function PdfViewer() {
           </div>
         </div>
       )}
-      <div className={`pdf-scroll draw-${drawTool}`} ref={containerRef} onMouseUp={onMouseUp} onScroll={onScroll}>
+      <div className={`pdf-scroll draw-${drawTool}`} ref={containerRef} onMouseUp={updateSelectionPopover} onScroll={onScroll}>
         {Array.from({ length: n }).map((_, i) => {
           const pinfo = pages?.pages[i];
           const scaleFromPdf = pinfo ? scale : scale;

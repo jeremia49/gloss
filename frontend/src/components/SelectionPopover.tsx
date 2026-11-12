@@ -25,6 +25,30 @@ export function SelectionPopover({
     zh: { explain: "💡 解释", translate: "🌐 翻译", ask: "💬 加入会话", speak: "🔊 朗读", highlight: "高亮", copy: "⧉ 复制", note: "📝 添加笔记", save: "保存笔记", saving: "保存中…", saveError: "高亮保存失败，请重试。", placeholder: "补充你的笔记…" },
   }[uiLang];
 
+  async function copySelection() {
+    const text = selection?.text || "";
+    if (!text) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch {
+      /* insecure LAN origins have no async clipboard; fall back below */
+    }
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.appendChild(field);
+    field.select();
+    try {
+      document.execCommand("copy");
+    } finally {
+      field.remove();
+    }
+  }
+
   async function saveHighlight(nextColor: string, nextNote = "") {
     if (saving) return;
     setSaving(true);
@@ -41,8 +65,17 @@ export function SelectionPopover({
   return (
     <div
       className={`sel-popover ${noteOpen ? "with-note" : ""}`}
-      style={{ position: "fixed", left: pos.x, top: pos.y }}
+      style={{
+        position: "fixed",
+        left: pos.x,
+        top: pos.y,
+        maxHeight: `calc(100dvh - ${pos.y + 8}px)`,
+        overflowY: "auto",
+      }}
       onMouseDown={(event) => {
+        if (!(event.target instanceof HTMLTextAreaElement)) event.preventDefault();
+      }}
+      onPointerDown={(event) => {
         if (!(event.target instanceof HTMLTextAreaElement)) event.preventDefault();
       }}
     >
@@ -79,7 +112,7 @@ export function SelectionPopover({
         <button onClick={() => setNoteOpen((open) => !open)}>{T.note}</button>
         <button
           onClick={() => {
-            if (selection) navigator.clipboard?.writeText(selection.text);
+            void copySelection();
             onClose();
           }}
         >

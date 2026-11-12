@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../store";
 import { SummaryPanel } from "./SummaryPanel";
 import { ExplainPanel } from "./ExplainPanel";
@@ -44,7 +45,7 @@ const TABS: TabDefinition[] = [
   { id: "settings", en: "Settings", zh: "设置", C: SettingsPanel },
 ];
 
-export function SidePanel() {
+export function SidePanel({ visible = true }: { visible?: boolean }) {
   const activeTab = useStore((s) => s.activeTab);
   const setTab = useStore((s) => s.setTab);
   const askAboutText = useStore((s) => s.askAboutText);
@@ -52,6 +53,57 @@ export function SidePanel() {
   const current = useStore((s) => s.current);
   const installedPlugins = useStore((s) => s.pluginSnapshot.installed);
   const [ask, setAsk] = useState<{ x: number; y: number; text: string } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!visible) setAsk(null);
+  }, [visible]);
+
+  // Keep the selected tab visible in the horizontally scrolling tablet tab bar.
+  // Scroll the tab strip itself — scrollIntoView would also shift the reader
+  // sideways toward the off-screen drawer.
+  useEffect(() => {
+    if (!visible) return;
+    const bar = tabsRef.current;
+    const active = bar?.querySelector<HTMLElement>(".tab.active");
+    if (!bar || !active) return;
+    const barRect = bar.getBoundingClientRect();
+    const tabRect = active.getBoundingClientRect();
+    if (tabRect.left >= barRect.left && tabRect.right <= barRect.right) return;
+    const target = bar.scrollLeft + tabRect.left - barRect.left - (barRect.width - tabRect.width) / 2;
+    bar.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [activeTab, visible]);
+
+  // iPad/Safari select text through native handles and do not emit a usable
+  // mouseup, so reveal "add to chat" after the selection settles.
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (activeTab === "chat" || activeTab === "settings") return;
+        const selection = window.getSelection();
+        const text = selection?.toString().trim() || "";
+        if (text.length < 2 || !selection || selection.rangeCount === 0) return;
+        const anchor = selection.anchorNode;
+        const element = anchor instanceof Element ? anchor : anchor?.parentElement;
+        if (!element || !contentRef.current?.contains(element)) return;
+        if (element.closest("input, textarea, [contenteditable='true']")) return;
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        setAsk({
+          x: Math.max(8, Math.min(rect.left, window.innerWidth - 190)),
+          y: Math.max(8, Math.min(rect.bottom, window.innerHeight - 70)),
+          text,
+        });
+      }, 240);
+    };
+    document.addEventListener("selectionchange", schedule);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("selectionchange", schedule);
+    };
+  }, [activeTab]);
   // TeX tab only for arXiv papers (they have LaTeX source)
   const pluginTabs: TabDefinition[] = installedPlugins.map((plugin) => {
     const panel = plugin.contributes?.paper_sidebar;
@@ -81,12 +133,15 @@ export function SidePanel() {
 
   return (
     <div className="side-panel">
-      <div className="tabs">
+      <div className="tabs" ref={tabsRef}>
         {tabs.map((t) => (
           <button
             key={t.id}
             className={`tab${t.plugin ? " plugin-tab" : ""}${activeTab === t.id ? " active" : ""}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              setTab(t.id);
+              setAsk(null);
+            }}
           >
             {t.plugin && <span className="plugin-tab-icon" aria-hidden="true">{t.icon}</span>}
             <span>{uiLang === "zh" ? t.zh : t.en}</span>
@@ -95,7 +150,7 @@ export function SidePanel() {
       </div>
       {/* Every panel stays mounted (hidden when inactive) so scroll position,
           mind-map pan/zoom, and in-flight work are preserved across tab switches. */}
-      <div className="tab-content" onMouseUp={onMouseUp} onMouseDown={() => setAsk(null)}>
+      <div className="tab-content" ref={contentRef} onMouseUp={onMouseUp} onMouseDown={() => setAsk(null)}>
         {tabs.map((t) => {
           const C = t.C;
           return (
@@ -105,11 +160,12 @@ export function SidePanel() {
           );
         })}
       </div>
-      {ask && (
+      {ask && createPortal(
         <button
           className="ask-chat-pop"
-          style={{ position: "fixed", left: ask.x, top: ask.y + 10, zIndex: 40 }}
+          style={{ position: "fixed", left: ask.x, top: ask.y + 10, zIndex: 80 }}
           onMouseDown={(e) => e.preventDefault()}
+          onPointerDown={(e) => e.preventDefault()}
           onClick={() => {
             askAboutText(ask.text);
             window.getSelection()?.removeAllRanges();
@@ -117,7 +173,8 @@ export function SidePanel() {
           }}
         >
           💬 {uiLang === "zh" ? "添加到会话" : "Add to chat"}
-        </button>
+        </button>,
+        document.body,
       )}
     </div>
   );

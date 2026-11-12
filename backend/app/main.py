@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config
+from . import auth, config
 from .library import store
 from .library.import_jobs import ImportJobManager
 from .providers import registry
@@ -38,6 +38,14 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    auth.validate_startup()
+    if auth.enabled():
+        logger.info("Password authentication enabled (user: %s)", auth.username())
+    else:
+        logger.warning(
+            "Authentication is disabled. Use Gloss only on trusted networks; "
+            "set GLOSS_PASSWORD before exposing it to the internet."
+        )
     store.init_db()
     app.state.import_jobs = ImportJobManager(
         download_timeout=papers.IMPORT_DOWNLOAD_TIMEOUT,
@@ -60,6 +68,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Gloss-Local", version="1.0.2", lifespan=lifespan)
 
+# Auth first, CORS outer: allows unauthenticated preflight while every data
+# route (API, PDFs, uploads, SPA) still requires the session cookie.
+auth.install(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

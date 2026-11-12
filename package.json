@@ -12,6 +12,7 @@
     "backend/requirements.txt",
     "frontend/dist/**",
     "scripts/gloss.mjs",
+    "docs/hosting.md",
     "README.md",
     "README.zh.md",
     "CHANGELOG.md"

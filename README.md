@@ -196,6 +196,20 @@ ssh -N -L 8010:127.0.0.1:8010 -p <ssh-port> user@server
 
 Open `http://localhost:8010` locally.
 
+### Internet hosting (your own server)
+
+Do not expose Gloss directly: local mode has no login. The included Docker +
+Caddy stack adds password authentication, automatic HTTPS, and a persistent
+data volume:
+
+```bash
+cp .env.example .env   # set GLOSS_DOMAIN and GLOSS_PASSWORD (openssl rand -hex 24)
+docker compose up -d --build
+```
+
+See [docs/hosting.md](docs/hosting.md) for DNS, firewall, backups, provider
+setup, and the non-Docker reverse-proxy option.
+
 Persistent data is stored in `%LOCALAPPDATA%\Gloss\data` on Windows and
 `$XDG_DATA_HOME/gloss` (default `~/.local/share/gloss`) on Linux and macOS. Set `GLOSS_DATA_DIR` to override it.
 

@@ -14,6 +14,8 @@
 - 设置页的文字转语音新增 **自定义提示词** 文本框：作为 `instructions` 字段随每次朗读请求发送，用于控制语气、语速、口音（不会被读出来）；修改提示词后会重新合成，不复用旧缓存。
 - Settings → text-to-speech gains a **custom prompt** box, sent as the `instructions` field with every speech request to steer tone, pace and accent (it is never read aloud); changing it re-synthesizes instead of reusing cached audio.
 - Added Bahasa Indonesia to the Answer language and Translation target options in Settings.
+- 新增 **互联网托管**：提供 Docker + Caddy 部署栈（`docker compose up -d --build`），自动 HTTPS、持久化数据卷；设置 `GLOSS_PASSWORD` 后启用密码登录，未登录请求无法访问论文、PDF、API 或插件。`GLOSS_REQUIRE_AUTH=1` 可阻止无密码的公开启动；登录失败按 IP 限流。详见 `docs/hosting.md`。
+- Added **internet hosting**: a Docker + Caddy stack (`docker compose up -d --build`) with automatic HTTPS and a persistent data volume; setting `GLOSS_PASSWORD` enables a signed-cookie login page, and unauthenticated requests cannot reach papers, PDFs, the API, or plugins. `GLOSS_REQUIRE_AUTH=1` refuses to start without a password, and failed logins are rate-limited per IP. See `docs/hosting.md`.
 
 
 ## v1.0.2 — 2026-07-30

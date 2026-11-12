@@ -1004,3 +1004,240 @@ button.small { font-size: 12px; padding: 3px 8px; margin-top: 6px; }
 }
 .reading-rect.loading { animation: reading-pulse 1.2s ease-in-out infinite; }
 @keyframes reading-pulse { 50% { box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.3); } }
+
+/* ==========================================================================
+   Tablet / touch layout (iPad portrait + landscape, split screen)
+   ========================================================================== */
+
+html { text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior: none; }
+.app { height: 100vh; height: 100dvh; }
+.reader, .pdf-wrap, .side-panel, .tab-content, .tab-pane { min-height: 0; }
+.paper-title { min-width: 0; }
+.pdf-scroll, .library, .outline, .panel-body, .chat-body {
+  -webkit-overflow-scrolling: touch;
+}
+.pdf-scroll { overscroll-behavior: contain; }
+
+.topbar {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.topbar-tools { display: none; align-items: center; gap: 5px; }
+.topbar-tool {
+  width: 42px; height: 42px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg3); color: var(--fg-dim); font-size: 18px; line-height: 1;
+}
+.topbar-tool:hover { color: var(--fg); border-color: var(--accent); }
+.topbar-tool.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+
+.drawer-backdrop {
+  position: absolute; inset: 0; z-index: 55;
+  background: rgba(3, 6, 10, 0.42);
+  animation: drawer-fade 160ms ease-out;
+}
+@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (hover: none) {
+  .card-del { opacity: 1; }
+  .card:hover { transform: none; }
+  .card:active { border-color: var(--accent); }
+  .tab:hover { color: var(--fg-dim); background: none; }
+  .tab.active:hover { color: var(--on-accent); background: var(--accent); }
+}
+
+@media (pointer: coarse) {
+  .zoom button, .pdf-disp-btn {
+    width: 36px; height: 36px;
+    display: inline-grid; place-items: center;
+  }
+  .zoom span { width: 46px; font-size: 12.5px; }
+  .provider-badge { height: 36px; }
+  .card-del { top: 2px; right: 2px; width: 38px; height: 38px; font-size: 22px; }
+  .outline-item { padding-top: 10px; padding-bottom: 10px; font-size: 13.5px; }
+  .tab { padding: 8px 12px; }
+  .sel-popover button { padding: 9px 10px; font-size: 13.5px; }
+  .hl-dot { width: 21px; height: 21px; }
+  .draw-tools > button { min-width: 36px; height: 36px; }
+  .draw-color { width: 24px; height: 24px; }
+  .draw-widths button { width: 30px; height: 30px; }
+  .ra-controls button { padding: 7px 11px; }
+  .chat-input button { padding: 8px 18px; }
+  .panel-actions button, .skill-run button, button.small, button.primary {
+    min-height: 38px;
+  }
+  .tab, .outline-item, .card, .hl-dot, .draw-color { -webkit-tap-highlight-color: transparent; }
+}
+
+/* Keep iOS Safari from zooming the page when a field receives focus. */
+@media (pointer: coarse) {
+  .import-input,
+  .settings input, .settings select, .settings textarea,
+  .search, .chat-input textarea, .chat-session, .chat-title-input,
+  .sel-input, .sel-note-editor textarea, .ra-section,
+  .extension-feedback input, .extension-feedback textarea,
+  .personal-notes textarea, .hl-edit textarea,
+  .feature-setting-row input:not([type="checkbox"]),
+  .feature-setting-row select, .feature-setting-row textarea,
+  .skill-run input { font-size: 16px; }
+}
+
+@media (max-width: 1280px) {
+  .topbar { gap: 8px; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); }
+  .topbar-tools { display: flex; }
+  .brand-zh { display: none; }
+
+  .reader { position: relative; }
+  .divider { display: none; }
+
+  .outline-host.drawer {
+    position: absolute; top: 0; bottom: 0; left: 0; z-index: 60;
+    width: min(320px, 86vw); height: auto; background: var(--panel);
+    visibility: hidden; transform: translateX(-101%);
+    transition: transform 200ms ease, visibility 200ms ease;
+    box-shadow: 16px 0 40px rgba(0, 0, 0, 0.45);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .outline-host.drawer.open { visibility: visible; transform: translateX(0); }
+  .outline-host.drawer .outline { border-right: none; }
+
+  .side-host.drawer {
+    position: absolute; top: 0; bottom: 0; right: 0; z-index: 60;
+    width: min(460px, 92vw); height: auto; display: flex; background: var(--panel);
+    visibility: hidden; transform: translateX(101%);
+    transition: transform 200ms ease, visibility 200ms ease;
+    box-shadow: -16px 0 40px rgba(0, 0, 0, 0.45);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .side-host.drawer.open { visibility: visible; transform: translateX(0); }
+  .side-host.drawer .side-panel { border-left: none; }
+
+  .library { padding: 22px 18px; padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+  .lib-hero { margin-top: 0; margin-bottom: 22px; }
+  .lib-hero h1 { font-size: 32px; }
+  .hero-zh { font-size: 22px; }
+  .lib-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .card { padding: 14px; min-height: 112px; }
+
+  .pdf-toolbar { padding: 6px 10px; gap: 6px; }
+  .pdf-scroll { padding: 12px; }
+  .pdf-page { margin-bottom: 14px; }
+
+  .tabs {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; white-space: nowrap; font-size: 13px; }
+
+  .grid2 { grid-template-columns: 1fr; }
+  .sbs-row { grid-template-columns: 1fr; gap: 3px; padding: 7px 0; }
+
+  .sel-popover { max-width: calc(100vw - 16px); }
+  .sel-popover-main { flex-wrap: wrap; }
+  .sel-popover.with-note { min-width: 0; width: min(380px, calc(100vw - 16px)); }
+
+  .read-aloud-bar { margin: 8px 10px 0; }
+  .read-aloud-bar .ra-row { flex-wrap: wrap; row-gap: 6px; }
+  .read-aloud-bar .ra-section { max-width: 100%; flex: 1 1 160px; }
+  .read-aloud-bar .ra-controls { margin-left: 0; width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+
+  .feature-settings-nav { flex-basis: 132px; }
+  .toast { bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px)); max-width: calc(100vw - 24px); }
+}
+
+@media (min-width: 1281px) and (max-width: 1366px) {
+  .side-host { max-width: 380px; }
+  .outline-host { max-width: 200px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .sbs-row { grid-template-columns: 1fr; gap: 3px; padding: 7px 0; }
+}
+
+@media (max-width: 600px) {
+  .topbar { gap: 6px; }
+  .brand-name { font-size: 15px; }
+  .crumbs .link { font-size: 12px; }
+  .library { padding: 14px 12px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .lib-hero h1 { font-size: 27px; }
+  .hero-zh { font-size: 19px; }
+  .tagline { font-size: 13px; }
+  .import-row { flex-direction: column; }
+  .import-input { width: 100%; max-width: none; }
+  .import-row button { width: 100%; height: 44px; }
+
+  .outline-host.drawer { width: min(300px, 88vw); }
+  .side-host.drawer { width: 100vw; }
+
+  .pdf-toolbar { flex-wrap: wrap; }
+  .paper-title { flex: 1 1 100%; order: -1; }
+  .read-aloud-bar .ra-controls { justify-content: flex-start; }
+  .draw-tools { position: fixed; top: 108px; left: 8px; right: 8px; flex-wrap: wrap; white-space: normal; }
+
+  .usage-total { grid-template-columns: 1fr; }
+  .lasso-preview { grid-template-columns: 1fr; }
+  .lasso-preview > img { width: 100%; height: 120px; }
+  .extension-card { grid-template-columns: 34px minmax(0, 1fr); }
+  .extension-actions { grid-column: 2; flex-direction: row; flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline-host.drawer, .side-host.drawer { transition: none; }
+  .drawer-backdrop { animation: none; }
+}
+
+/* Tablet-width panels (e.g. iPad landscape) keep the tab bar on one row. */
+@media (min-width: 1281px) and (max-width: 1366px) {
+  .tabs {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; white-space: nowrap; }
+}
+
+@media (pointer: coarse) {
+  .outline-expand { flex: 0 0 30px; font-size: 17px; }
+}
+
+/* Clipped drawers must not turn the reader into a horizontally scrollable box. */
+.reader.compact { overflow: hidden; overflow: clip; }
+
+@media (pointer: coarse) {
+  .chat-input button { min-height: 40px; }
+  .chat-head-icon, .chat-del, .chat-new, .chat-session, .chat-head-icon { min-height: 34px; }
+  .provider-option { min-height: 44px; }
+  .import-job-action { min-height: 34px; padding-inline: 10px; }
+  .tab { min-height: 40px; }
+}
+
+@media (pointer: coarse) {
+  .divider { flex-basis: 10px; touch-action: none; }
+}
+
+@media (max-width: 1280px) {
+  .topbar {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+}
+
+/* iPad touch polish */
+.toast { z-index: 70; }
+.textLayer, .textLayer span { -webkit-user-select: text; user-select: text; }
+
+@media (pointer: coarse) {
+  button, .tab, .card, .outline-item, .outline-expand, .card-del { touch-action: manipulation; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select, textarea { font-size: 16px; }
+  .pdf-note-pin { width: 30px; height: 30px; font-size: 14px; }
+}
+
+.ask-chat-pop { white-space: nowrap; }
+
+/* Long highlighted text must wrap inside the narrow tablet sidebar instead of
+   pushing the note/ask/delete controls off the right edge. */
+.hl-item, .hl-text { min-width: 0; }
+.hl-text { overflow-wrap: anywhere; }

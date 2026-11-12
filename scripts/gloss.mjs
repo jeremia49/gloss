@@ -226,6 +226,18 @@ function portIsFree(host, port) {
   });
 }
 
+function lanUrls(port) {
+  const urls = [];
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const address of entries || []) {
+      if ((address.family === "IPv4" || address.family === 4) && !address.internal) {
+        urls.push(`http://${address.address}:${port}`);
+      }
+    }
+  }
+  return urls;
+}
+
 async function start() {
   ensurePrepared();
   const host = selectedHost();
@@ -234,6 +246,11 @@ async function start() {
     fail(`port ${port} on ${host} is already in use. Set GLOSS_PORT or pass --port <number>.`);
   }
   console.log(`Gloss: http://127.0.0.1:${port}`);
+  if (host === "0.0.0.0" || host === "::" || host === "") {
+    for (const url of lanUrls(port)) {
+      console.log(`       ${url}  (open this on your iPad / tablet)`);
+    }
+  }
   const child = spawn(
     VENV_PYTHON,
     ["-m", "uvicorn", "app.main:app", "--host", host, "--port", String(port)],
