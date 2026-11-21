@@ -9,6 +9,7 @@ export function Library() {
   const openPaper = useStore((s) => s.openPaper);
   const loadPapers = useStore((s) => s.loadPapers);
   const enqueueImport = useStore((s) => s.enqueueImport);
+  const renamePaper = useStore((s) => s.renamePaper);
   const notify = useStore((s) => s.notify);
   const uiLang = useStore((s) => s.uiLang);
   const T = {
@@ -20,6 +21,7 @@ export function Library() {
       working: "Downloading and parsing… this usually takes about a minute.",
       empty: "No papers yet — import an arXiv id or upload a PDF.",
       confirmDelete: "Delete this paper?",
+      rename: "Rename title",
       pages: (n: number) => `${n}p`,
     },
     zh: {
@@ -30,13 +32,41 @@ export function Library() {
       working: "正在下载并解析…通常需要约一分钟。",
       empty: "还没有论文 — 导入 arXiv 编号或上传 PDF。",
       confirmDelete: "删除这篇论文？",
+      rename: "重命名标题",
       pages: (n: number) => `${n} 页`,
     },
   }[uiLang];
   const [importQ, setImportQ] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [creatingImport, setCreatingImport] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function startRename(id: string, title: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    cancelRef.current = false;
+    setEditingId(id);
+    setEditingTitle(title);
+  }
+
+  async function commitRename(id: string) {
+    if (cancelRef.current) {
+      cancelRef.current = false;
+      return;
+    }
+    const original = papers.find((p) => p.id === id);
+    setEditingId(null);
+    setEditingTitle("");
+    const title = editingTitle.trim();
+    if (!title || !original || title === (original.title || "")) return;
+    try {
+      await renamePaper(id, title);
+    } catch (error) {
+      notify("Rename failed: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }
 
   async function onUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -105,13 +135,38 @@ export function Library() {
         {papers.length === 0 && <div className="muted empty">{T.empty}</div>}
         {papers.map((p) => (
           <div className="card" key={p.id} onClick={() => openPaper(p.id)}>
-            <div className="card-title">{p.title || "Untitled"}</div>
+            {editingId === p.id ? (
+              <input
+                className="card-title-input"
+                value={editingTitle}
+                autoFocus
+                maxLength={300}
+                placeholder={T.rename}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename(p.id);
+                  if (e.key === "Escape") { cancelRef.current = true; setEditingId(null); setEditingTitle(""); }
+                }}
+                onBlur={() => commitRename(p.id)}
+              />
+            ) : (
+              <div className="card-title">{p.title || "Untitled"}</div>
+            )}
             <div className="card-auth">{(p.authors || []).slice(0, 4).join(", ")}</div>
             <div className="card-meta">
               <span>{T.pages(p.n_pages)}</span>
               {p.year && <span>· {p.year}</span>}
               {p.source && <span>· {p.source}</span>}
             </div>
+            <button
+              className="card-edit"
+              title={T.rename}
+              aria-label={T.rename}
+              onClick={(e) => startRename(p.id, p.title || "", e)}
+            >
+              ✎
+            </button>
             <button className="card-del" onClick={(e) => del(p.id, e)}>×</button>
           </div>
         ))}

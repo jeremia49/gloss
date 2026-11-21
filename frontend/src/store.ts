@@ -50,6 +50,7 @@ interface State {
   settingsFocus: string | null;
 
   loadPapers: () => Promise<void>;
+  renamePaper: (id: string, title: string) => Promise<void>;
   loadImportJobs: () => Promise<void>;
   enqueueImport: (query: string) => Promise<ImportJob>;
   cancelImport: (id: string) => Promise<void>;
@@ -121,6 +122,13 @@ export const useStore = create<State>((set, get) => ({
       papersAppliedSequence = requestSequence;
       set({ papers });
     }
+  },
+  renamePaper: async (id, title) => {
+    const updated = await api.patchPaper(id, { title });
+    set((state) => ({
+      papers: state.papers.map((p) => (p.id === id ? updated : p)),
+      current: state.current && state.current.id === id ? updated : state.current,
+    }));
   },
   loadImportJobs: () => {
     if (importRefreshInFlight) return importRefreshInFlight;

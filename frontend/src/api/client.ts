@@ -384,6 +384,12 @@ export const api = {
   getPaper: (id: string) => fetch(`/api/papers/${id}`).then((r) => j<Paper>(r)),
   deletePaper: (id: string) =>
     fetch(`/api/papers/${id}`, { method: "DELETE" }).then((r) => j<any>(r)),
+  patchPaper: (id: string, fields: { title: string }) =>
+    fetch(`/api/papers/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(fields),
+    }).then((r) => j<Paper>(r)),
   uploadPaper: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
